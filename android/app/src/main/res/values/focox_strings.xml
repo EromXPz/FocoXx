@@ -1,0 +1,6 @@
+# android/app/src/main/res/values/focox_strings.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="focox_accessibility_description">Detecta a abertura dos aplicativos selecionados para exibir a tela de foco.</string>
+</resources>
