@@ -1,5 +1,3 @@
-# android/app/src/main/kotlin/dev/productos/productos_app/FocoXAccessibilityService.kt
-
 package dev.productos.productos_app
 
 import android.accessibilityservice.AccessibilityService
