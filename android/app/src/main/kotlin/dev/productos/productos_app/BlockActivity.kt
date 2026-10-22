@@ -1,5 +1,3 @@
-# android/app/src/main/kotlin/dev/productos/productos_app/BlockActivity.kt
-
 package dev.productos.productos_app
 
 import android.app.Activity
