@@ -1,5 +1,3 @@
-# android/app/src/main/kotlin/dev/productos/productos_app/MainActivity.kt
-
 package dev.productos.productos_app
 
 import android.content.Intent
