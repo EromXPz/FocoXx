@@ -1,4 +1,4 @@
-name: Build FocoX APK (debug)
+name: Build FocoX APK (profile arm64)
 on:
   push:
     branches: [main]
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  build-debug-apk:
+  build-profile-arm64:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,14 +25,16 @@ jobs:
         run: flutter pub get
       - name: Analyze project
         run: flutter analyze
-      - name: Build debug APK
-        run: flutter build apk --debug
+      - name: Build profile APK for 64-bit ARM only
+        run: flutter build apk --profile --target-platform android-arm64
       - name: Verify APK exists
-        run: test -s build/app/outputs/flutter-apk/app-debug.apk
-      - name: Upload debug APK
+        run: test -s build/app/outputs/flutter-apk/app-profile.apk
+      - name: Verify APK archive
+        run: unzip -t build/app/outputs/flutter-apk/app-profile.apk
+      - name: Upload profile APK
         uses: actions/upload-artifact@v4
         with:
-          name: FocoX-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: FocoX-profile-arm64-apk
+          path: build/app/outputs/flutter-apk/app-profile.apk
           if-no-files-found: error
           retention-days: 7
