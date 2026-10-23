@@ -32,7 +32,14 @@ class BlockActivity : Activity() {
         })
         root.addView(Button(this).apply {
             text = "Voltar"
-            setOnClickListener { finish() }
+            setOnClickListener {
+                val home = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(home)
+                finish()
+            }
         })
         setContentView(root)
     }
