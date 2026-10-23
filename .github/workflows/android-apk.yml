@@ -1,8 +1,7 @@
 name: Build FocoX APK
 
 on:
-  push:
-    branches: [main]
+  # Manual only: do not produce confusing Release APKs on every push.
   workflow_dispatch:
 
 permissions:
