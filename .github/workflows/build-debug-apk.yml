@@ -25,19 +25,20 @@ jobs:
         run: flutter pub get
       - name: Analyze project
         run: flutter analyze
-      - name: Build profile APK for ARM64 with separate dev package ID
-        run: flutter build apk --profile --target-platform android-arm64 --build-number="${GITHUB_RUN_NUMBER}"
+      - name: Build DEBUG APK for ARM64 (debug build type has the .dev applicationIdSuffix)
+        run: flutter build apk --debug --target-platform android-arm64 --build-number="${GITHUB_RUN_NUMBER}"
       - name: Verify APK archive
-        run: unzip -t build/app/outputs/flutter-apk/app-profile.apk
-      - name: Verify package ID
+        run: unzip -t build/app/outputs/flutter-apk/app-debug.apk
+      - name: Verify package ID and architecture
         run: |
-          APK=build/app/outputs/flutter-apk/app-profile.apk
+          APK=build/app/outputs/flutter-apk/app-debug.apk
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
           "$AAPT" dump badging "$APK" | grep -F "package: name='app.focox.android.dev'"
+          "$AAPT" dump badging "$APK" | grep -F "native-code: 'arm64-v8a'"
       - name: Verify APK signature
         run: |
-          APK=build/app/outputs/flutter-apk/app-profile.apk
+          APK=build/app/outputs/flutter-apk/app-debug.apk
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose "$APK"
@@ -46,7 +47,7 @@ jobs:
       - name: Upload FocoX Dev APK
         uses: actions/upload-artifact@v4
         with:
-          name: FocoX-dev-profile-arm64
-          path: build/app/outputs/flutter-apk/app-profile.apk
+          name: FocoX-dev-debug-arm64
+          path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 7
