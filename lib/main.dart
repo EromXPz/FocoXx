@@ -1,95 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-void main() => runApp(const FocoXApp());
-
+const bg=Color(0xFF080B16), panel=Color(0xFF12182A), blue=Color(0xFF35D8FF), purple=Color(0xFF8B5CFF), muted=Color(0xFF9AA8C5);
+void main()=>runApp(const FocoXApp());
 class FocoXApp extends StatelessWidget {
-  const FocoXApp({super.key});
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'FocoX',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)), useMaterial3: true),
-    home: const FocoHome(),
-  );
+ const FocoXApp({super.key});
+ @override Widget build(BuildContext context)=>MaterialApp(title:'FocoX',debugShowCheckedModeBanner:false,
+ theme:ThemeData(brightness:Brightness.dark,scaffoldBackgroundColor:bg,colorScheme:ColorScheme.fromSeed(seedColor:purple,brightness:Brightness.dark),useMaterial3:true),home:const FocoShell());
 }
-
-class FocoHome extends StatefulWidget {
-  const FocoHome({super.key});
-  @override
-  State<FocoHome> createState() => _FocoHomeState();
+class FocoShell extends StatefulWidget { const FocoShell({super.key}); @override State<FocoShell> createState()=>_FocoShellState(); }
+class _FocoShellState extends State<FocoShell> {
+ static const platform=MethodChannel('app.focox/control');
+ final apps=const <FocusApp>[
+ FocusApp('com.instagram.android','Instagram','Redes sociais',Icons.camera_alt_rounded,Color(0xFFFF6E9F)),
+ FocusApp('com.zhiliaoapp.musically','TikTok','Vídeos curtos',Icons.music_note_rounded,blue),
+ FocusApp('com.google.android.youtube','YouTube','Vídeos',Icons.play_circle_fill_rounded,Color(0xFFFF5353)),
+ FocusApp('com.whatsapp','WhatsApp','Mensagens',Icons.chat_rounded,Color(0xFF36D98A)),
+ FocusApp('com.twitter.android','X','Redes e notícias',Icons.alternate_email_rounded,Color(0xFFE6ECF8)),
+ FocusApp('com.kwai.video','Kwai','Vídeos curtos',Icons.ondemand_video_rounded,Color(0xFFFFA34D)),
+ FocusApp('com.reddit.frontpage','Reddit','Comunidades',Icons.forum_rounded,Color(0xFFFF805B)),
+ ];
+ final selected=<String>{}; int minutes=25,tab=0; bool enabled=false,loading=true;
+ String status='Escolha os apps que mais distraem você.';
+ @override void initState(){super.initState();_load();}
+ Future<void> _load() async {try {final data=await platform.invokeMapMethod<String,dynamic>('loadSettings');if(!mounted)return;setState((){selected..clear()..addAll((data?['packages'] as List<dynamic>? ?? const []).cast<String>());minutes=(data?['minutes'] as int?)??25;enabled=(data?['enabled'] as bool?)??false;loading=false;});} on PlatformException catch(e){if(mounted)setState((){status='Não foi possível carregar: ${e.message}';loading=false;});}}
+ Future<void> _save() async {try{await platform.invokeMethod('saveSettings',{'packages':selected.toList(),'minutes':minutes,'enabled':enabled});if(mounted)setState(()=>status=enabled?'Modo foco configurado. Ative a Acessibilidade para aplicar os bloqueios.':'Preferências salvas neste aparelho.');}on PlatformException catch(e){if(mounted)setState(()=>status='Falha ao salvar: ${e.message}');}}
+ Future<void> _accessibility() async {try{await platform.invokeMethod('openAccessibilitySettings');}on PlatformException catch(e){if(mounted)setState(()=>status=e.message??'Não foi possível abrir as configurações.');}}
+ void _toggle(String p,bool v){setState(()=>v?selected.add(p):selected.remove(p));_save();}
+ @override Widget build(BuildContext context){final pages=[_home(),_appsPage(),_progress(),_more()];return Scaffold(body:SafeArea(child:Column(children:[_header(),Expanded(child:AnimatedSwitcher(duration:const Duration(milliseconds:200),child:KeyedSubtree(key:ValueKey(tab),child:pages[tab])))])),bottomNavigationBar:_bottomNav());}
+ Widget _header()=>Padding(padding:const EdgeInsets.fromLTRB(22,12,22,12),child:Row(children:[
+ Container(width:42,height:42,decoration:BoxDecoration(borderRadius:BorderRadius.circular(14),gradient:const LinearGradient(colors:[blue,purple]),boxShadow:[BoxShadow(color:purple.withValues(alpha:.25),blurRadius:18)]),child:const Icon(Icons.lock_rounded,color:Colors.white)),
+ const SizedBox(width:11),const Text('Foco',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800)),const Text('X',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:blue)),const Spacer(),
+ IconButton(onPressed:_accessibility,tooltip:'Acessibilidade',icon:const Icon(Icons.settings_outlined,color:muted))]));
+ Widget _home()=>ListView(key:const PageStorageKey('home'),padding:const EdgeInsets.fromLTRB(20,4,20,24),children:[
+ const Text('SEU ESPAÇO DE FOCO',style:TextStyle(color:blue,fontSize:11,letterSpacing:2,fontWeight:FontWeight.w800)),const SizedBox(height:8),
+ const Text('Olá! Está na hora\nde focar.',style:TextStyle(fontSize:30,height:1.15,fontWeight:FontWeight.w800,letterSpacing:-.7)),const SizedBox(height:8),
+ const Text('Pequenos passos. Menos distrações.',style:TextStyle(color:muted)),const SizedBox(height:22),_focusCard(),const SizedBox(height:22),
+ Row(children:[const Expanded(child:Text('Tempo de foco',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800))),Text('${minutes} min por sessão',style:const TextStyle(color:muted,fontSize:12))]),
+ const SizedBox(height:12),_durations(),const SizedBox(height:22),
+ Row(children:[const Expanded(child:Text('Apps selecionados',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800))),Text('${selected.length} apps',style:const TextStyle(color:blue,fontWeight:FontWeight.w700))]),
+ const SizedBox(height:12),if(selected.isEmpty)_emptyApps() else Wrap(spacing:8,runSpacing:8,children:apps.where((a)=>selected.contains(a.packageName)).map(_pill).toList()),
+ const SizedBox(height:20),OutlinedButton.icon(onPressed:()=>setState(()=>tab=1),icon:const Icon(Icons.tune_rounded),label:const Text('Gerenciar aplicativos'),style:OutlinedButton.styleFrom(foregroundColor:blue,side:BorderSide(color:blue.withValues(alpha:.35)),minimumSize:const Size.fromHeight(52),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)))),
+ const SizedBox(height:14),_status()]);
+ Widget _focusCard()=>Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(borderRadius:BorderRadius.circular(26),gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF22234B),Color(0xFF151B35),Color(0xFF102A40)]),border:Border.all(color:purple.withValues(alpha:.42)),boxShadow:[BoxShadow(color:purple.withValues(alpha:.1),blurRadius:24)]),
+ child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+ Row(children:[Container(width:50,height:50,decoration:BoxDecoration(shape:BoxShape.circle,color:blue.withValues(alpha:.12),border:Border.all(color:blue.withValues(alpha:.3))),child:Icon(enabled?Icons.lock_rounded:Icons.psychology_alt_rounded,color:blue,size:28)),const SizedBox(width:13),
+ Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(enabled?'Modo foco configurado':'Modo foco',style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17)),const SizedBox(height:4),Row(children:[Container(width:7,height:7,decoration:BoxDecoration(color:enabled?const Color(0xFF4CE0A0):muted,shape:BoxShape.circle)),const SizedBox(width:6),Text(enabled?'Pronto para focar':'Desativado',style:const TextStyle(color:muted,fontSize:12))])])),Switch(value:enabled,onChanged:(v){setState(()=>enabled=v);_save();},activeThumbColor:blue,activeTrackColor:purple)]),
+ const SizedBox(height:18),const Text('Proteja seu tempo e mantenha sua atenção no que importa.',style:TextStyle(color:Color(0xFFD0D8EC),height:1.45)),const SizedBox(height:18),
+ SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:(){setState(()=>enabled=!enabled);_save();},icon:Icon(enabled?Icons.pause_rounded:Icons.bolt_rounded),label:Text(enabled?'Pausar modo foco':'Ativar modo foco'),style:FilledButton.styleFrom(backgroundColor:purple,minimumSize:const Size.fromHeight(50),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))))) ]));
+ Widget _durations()=>Row(children:[15,25,45,60].map((m){final active=minutes==m;return Expanded(child:Padding(padding:EdgeInsets.only(right:m==60?0:8),child:InkWell(borderRadius:BorderRadius.circular(14),onTap:(){setState(()=>minutes=m);_save();},child:AnimatedContainer(duration:const Duration(milliseconds:160),padding:const EdgeInsets.symmetric(vertical:14),decoration:BoxDecoration(borderRadius:BorderRadius.circular(14),color:active?purple.withValues(alpha:.22):panel,border:Border.all(color:active?purple:const Color(0xFF242E47))),child:Column(children:[Text('$m',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800,color:active?blue:Colors.white)),const SizedBox(height:3),Text('min',style:TextStyle(fontSize:11,color:active?blue:muted))]))));}).toList());
+ Widget _emptyApps()=>Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:const Color(0xFF242E47))),child:const Row(children:[Icon(Icons.apps_rounded,color:purple,size:28),SizedBox(width:12),Expanded(child:Text('Ainda não há apps selecionados. Escolha os aplicativos que deseja bloquear.',style:TextStyle(color:muted,height:1.35)))]));
+ Widget _pill(FocusApp a)=>Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:9),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(30),border:Border.all(color:a.color.withValues(alpha:.35))),child:Row(mainAxisSize:MainAxisSize.min,children:[Icon(a.icon,size:16,color:a.color),const SizedBox(width:7),Text(a.name,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600))]));
+ Widget _appsPage()=>ListView(key:const PageStorageKey('apps'),padding:const EdgeInsets.fromLTRB(20,4,20,24),children:[
+ const Text('Seus aplicativos',style:TextStyle(fontSize:28,fontWeight:FontWeight.w800,letterSpacing:-.5)),const SizedBox(height:8),const Text('Selecione o que costuma tirar sua atenção.',style:TextStyle(color:muted)),const SizedBox(height:20),
+ Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFF252E48))),child:Row(children:[const Icon(Icons.info_outline_rounded,color:blue),const SizedBox(width:10),Expanded(child:Text('${selected.length} selecionado(s) · Preferências salvas neste aparelho.',style:const TextStyle(color:muted,fontSize:12)))])),
+ const SizedBox(height:14),...apps.map(_appRow),const SizedBox(height:16),
+ FilledButton.icon(onPressed:_save,icon:const Icon(Icons.check_rounded),label:const Text('Salvar seleção'),style:FilledButton.styleFrom(backgroundColor:purple,minimumSize:const Size.fromHeight(52),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)))),
+ const SizedBox(height:10),OutlinedButton.icon(onPressed:_accessibility,icon:const Icon(Icons.settings_accessibility_rounded),label:const Text('Configurar acessibilidade'),style:OutlinedButton.styleFrom(foregroundColor:blue,side:BorderSide(color:blue.withValues(alpha:.3)),minimumSize:const Size.fromHeight(50),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)))),
+ const SizedBox(height:12),_status()]);
+ Widget _appRow(FocusApp a){final checked=selected.contains(a.packageName);return Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.symmetric(horizontal:13,vertical:12),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:checked?a.color.withValues(alpha:.38):const Color(0xFF252E48))),child:Row(children:[
+ Container(width:46,height:46,decoration:BoxDecoration(color:a.color.withValues(alpha:.13),borderRadius:BorderRadius.circular(14)),child:Icon(a.icon,color:a.color,size:24)),const SizedBox(width:12),
+ Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(a.name,style:const TextStyle(fontWeight:FontWeight.w700,fontSize:15)),const SizedBox(height:4),Text(a.category,style:const TextStyle(color:muted,fontSize:12))])),
+ Switch(value:checked,onChanged:(v)=>_toggle(a.packageName,v),activeThumbColor:blue,activeTrackColor:purple)]));}
+ Widget _progress()=>ListView(key:const PageStorageKey('progress'),padding:const EdgeInsets.fromLTRB(20,4,20,24),children:[
+ const Text('Seu progresso',style:TextStyle(fontSize:28,fontWeight:FontWeight.w800,letterSpacing:-.5)),const SizedBox(height:8),const Text('Construa hábitos melhores, um dia de cada vez.',style:TextStyle(color:muted)),const SizedBox(height:22),
+ Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),gradient:const LinearGradient(colors:[Color(0xFF22234B),Color(0xFF11273B)]),border:Border.all(color:blue.withValues(alpha:.25))),child:const Column(children:[CircleAvatar(radius:33,backgroundColor:Color(0x2235D8FF),child:Icon(Icons.auto_awesome_rounded,color:blue,size:32)),SizedBox(height:14),Text('Cada minuto conta',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),SizedBox(height:6),Text('Seu painel de progresso vai evoluir conforme você usa o FocoX.',textAlign:TextAlign.center,style:TextStyle(color:muted,height:1.4))])),
+ const SizedBox(height:16),Row(children:[Expanded(child:_stat(Icons.apps_rounded,'${selected.length}','Apps escolhidos',purple)),const SizedBox(width:12),Expanded(child:_stat(Icons.timer_outlined,'${minutes} min','Sessão definida',blue))]),const SizedBox(height:12),
+ _stat(Icons.shield_moon_outlined,enabled?'Configurado':'Desativado','Estado do modo foco',const Color(0xFF4CE0A0)),const SizedBox(height:16),const Text('Nota',style:TextStyle(fontSize:16,fontWeight:FontWeight.w800)),const SizedBox(height:8),
+ const Text('Para não mostrar números inventados, esta tela exibe as configurações reais salvas no aparelho. O tempo total e as sequências diárias ainda não são contabilizados.',style:TextStyle(color:muted,height:1.45))]);
+ Widget _stat(IconData icon,String value,String label,Color accent)=>Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:accent.withValues(alpha:.25))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,color:accent,size:23),const SizedBox(height:15),Text(value,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800)),const SizedBox(height:4),Text(label,style:const TextStyle(color:muted,fontSize:12))]));
+ Widget _more()=>ListView(key:const PageStorageKey('more'),padding:const EdgeInsets.fromLTRB(20,4,20,24),children:[
+ const Text('Mais opções',style:TextStyle(fontSize:28,fontWeight:FontWeight.w800,letterSpacing:-.5)),const SizedBox(height:8),const Text('Ajustes e informações do FocoX.',style:TextStyle(color:muted)),const SizedBox(height:22),
+ _moreTile(Icons.settings_accessibility_rounded,'Acessibilidade','Necessária para detectar apps em uso',_accessibility),_moreTile(Icons.tune_rounded,'Duração da sessão','Atualmente: ${minutes} minutos',()=>setState(()=>tab=0)),_moreTile(Icons.apps_rounded,'Aplicativos selecionados','${selected.length} selecionado(s)',()=>setState(()=>tab=1)),_moreTile(Icons.save_outlined,'Salvar configurações','Armazenamento local do aparelho',_save),const SizedBox(height:22),
+ Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF252E48))),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('FocoX',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800)),SizedBox(height:6),Text('Mais foco. Menos distrações.',style:TextStyle(color:blue,fontWeight:FontWeight.w600)),SizedBox(height:12),Text('Versão offline · Configurações mantidas no dispositivo. Não é necessário criar conta.',style:TextStyle(color:muted,height:1.45,fontSize:12))])),const SizedBox(height:14),_status()]);
+ Widget _moreTile(IconData icon,String title,String subtitle,VoidCallback action)=>Container(margin:const EdgeInsets.only(bottom:10),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(17),border:Border.all(color:const Color(0xFF252E48))),child:ListTile(onTap:action,leading:Container(width:42,height:42,decoration:BoxDecoration(color:purple.withValues(alpha:.14),borderRadius:BorderRadius.circular(13)),child:Icon(icon,color:blue)),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(subtitle,style:const TextStyle(color:muted,fontSize:12)),trailing:const Icon(Icons.chevron_right_rounded,color:muted)));
+ Widget _status()=>Container(padding:const EdgeInsets.all(13),decoration:BoxDecoration(color:panel.withValues(alpha:.7),borderRadius:BorderRadius.circular(14)),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[const Icon(Icons.info_outline_rounded,color:blue,size:18),const SizedBox(width:9),Expanded(child:Text(loading?'Carregando configurações...':status,style:const TextStyle(color:muted,fontSize:12,height:1.4)))]));
+ Widget _bottomNav(){const items=[(Icons.home_rounded,'Início'),(Icons.apps_rounded,'Apps'),(Icons.insights_rounded,'Progresso'),(Icons.grid_view_rounded,'Mais')];return Container(decoration:BoxDecoration(color:const Color(0xFF0D1220),border:Border(top:BorderSide(color:Colors.white.withValues(alpha:.07)))),child:SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(8,8,8,6),child:Row(children:List.generate(items.length,(i){final active=tab==i;final item=items[i];return Expanded(child:InkWell(borderRadius:BorderRadius.circular(16),onTap:()=>setState(()=>tab=i),child:AnimatedContainer(duration:const Duration(milliseconds:180),padding:const EdgeInsets.symmetric(vertical:9),decoration:BoxDecoration(color:active?purple.withValues(alpha:.18):Colors.transparent,borderRadius:BorderRadius.circular(16)),child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(item.$1,color:active?blue:muted,size:22),const SizedBox(height:4),Text(item.$2,style:TextStyle(color:active?Colors.white:muted,fontSize:10,fontWeight:active?FontWeight.w800:FontWeight.w500))])));})))));}
 }
-
-class _FocoHomeState extends State<FocoHome> {
-  static const platform = MethodChannel('app.focox/control');
-  final apps = <String, String>{
-    'com.instagram.android': 'Instagram',
-    'com.zhiliaoapp.musically': 'TikTok',
-    'com.google.android.youtube': 'YouTube',
-    'com.whatsapp': 'WhatsApp',
-    'com.twitter.android': 'X',
-    'com.kwai.video': 'Kwai',
-    'com.reddit.frontpage': 'Reddit',
-  };
-  final selected = <String>{};
-  int minutes = 25;
-  bool enabled = false;
-  String status = 'Configure os aplicativos que deseja bloquear.';
-  @override
-  void initState() { super.initState(); _load(); }
-  Future<void> _load() async {
-    try {
-      final data = await platform.invokeMapMethod<String, dynamic>('loadSettings');
-      if (!mounted || data == null) return;
-      setState(() {
-        selected.addAll((data['packages'] as List<dynamic>? ?? []).cast<String>());
-        minutes = (data['minutes'] as int?) ?? 25;
-        enabled = (data['enabled'] as bool?) ?? false;
-      });
-    } on PlatformException catch (e) { if (mounted) setState(() => status = 'Erro ao carregar: ${e.message}'); }
-  }
-  Future<void> _save() async {
-    try {
-      await platform.invokeMethod('saveSettings', {'packages': selected.toList(), 'minutes': minutes, 'enabled': enabled});
-      if (mounted) setState(() => status = enabled ? 'Foco ativo. Ative a Acessibilidade nas configurações do Android.' : 'Configurações salvas neste aparelho.');
-    } on PlatformException catch (e) { if (mounted) setState(() => status = 'Não foi possível salvar: ${e.message}'); }
-  }
-  Future<void> _accessibility() async {
-    try { await platform.invokeMethod('openAccessibilitySettings'); }
-    on PlatformException catch (e) { if (mounted) setState(() => status = e.message ?? 'Não foi possível abrir as configurações.'); }
-  }
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: const Row(children: [Icon(Icons.shield_moon_rounded), SizedBox(width: 10), Text('FocoX')]), actions: [IconButton(onPressed: _accessibility, tooltip: 'Acessibilidade', icon: const Icon(Icons.accessibility_new))]),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
-        Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(enabled ? Icons.lock_rounded : Icons.center_focus_strong_rounded, size: 36, color: theme.colorScheme.onPrimaryContainer),
-          const SizedBox(height: 12),
-          Text(enabled ? 'Modo foco configurado' : 'Recupere seu foco', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimaryContainer)),
-          const SizedBox(height: 6),
-          Text('Escolha os apps que tiram sua atenção e configure um período de foco.', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
-          const SizedBox(height: 12),
-          SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Ativar bloqueio'), value: enabled, onChanged: (v) { setState(() => enabled = v); _save(); }),
-        ])),
-        const SizedBox(height: 24),
-        Text('Duração do foco', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, children: [15, 25, 45, 60].map((m) => ChoiceChip(label: Text('$m min'), selected: minutes == m, onSelected: (_) { setState(() => minutes = m); _save(); })).toList()),
-        const SizedBox(height: 24),
-        Text('Aplicativos para bloquear', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text('Selecione os apps instalados que deseja limitar.', style: theme.textTheme.bodySmall),
-        const SizedBox(height: 8),
-        ...apps.entries.map((e) => Card(child: CheckboxListTile(value: selected.contains(e.key), onChanged: (v) { setState(() { if (v == true) { selected.add(e.key); } else { selected.remove(e.key); } }); _save(); }, secondary: const Icon(Icons.apps_rounded), title: Text(e.value)))),
-        const SizedBox(height: 16),
-        FilledButton.icon(onPressed: _accessibility, icon: const Icon(Icons.settings), label: const Text('Configurar acessibilidade')),
-        const SizedBox(height: 12),
-        Text(status, style: theme.textTheme.bodySmall),
-        const SizedBox(height: 8),
-        Text('O bloqueio depende da Acessibilidade permanecer ativada. O Android permite desativá-la ou desinstalar o app.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-      ]),
-    );
-  }
-}
+class FocusApp { const FocusApp(this.packageName,this.name,this.category,this.icon,this.color);final String packageName,name,category;final IconData icon;final Color color; }
