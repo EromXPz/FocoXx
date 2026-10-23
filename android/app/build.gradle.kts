@@ -34,7 +34,7 @@ android {
             // Install the development build alongside the original FocoX.
             applicationIdSuffix = ".dev"
         }
-        profile {
+        getByName("profile") {
             // Flutter's profile build is used by CI; keep it isolated from the installed app.
             applicationIdSuffix = ".dev"
         }
