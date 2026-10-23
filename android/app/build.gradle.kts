@@ -30,6 +30,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Install the development build alongside the original FocoX.
+            applicationIdSuffix = ".dev"
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
