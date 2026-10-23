@@ -34,6 +34,10 @@ android {
             // Install the development build alongside the original FocoX.
             applicationIdSuffix = ".dev"
         }
+        profile {
+            // Flutter's profile build is used by CI; keep it isolated from the installed app.
+            applicationIdSuffix = ".dev"
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
