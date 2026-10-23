@@ -1,5 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Flutter tooling uses this only in the development variant. -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Development variant label only. FocoX does not require network access. -->
     <application android:label="FocoX Dev" />
 </manifest>
